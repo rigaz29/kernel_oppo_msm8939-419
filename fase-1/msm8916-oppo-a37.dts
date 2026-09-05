@@ -3,14 +3,20 @@
  * OPPO A37 / A37f (msm8916, board-id 15399)
  *
  * Fase 1 forward-port: cukup untuk boot sampai konsol.
- * Berbasis msm8916-mtp mainline -- A37 memang turunan MTP, terlihat dari
- * compatible di DTS CAF 3.10 aslinya:
- *   compatible = "qcom,msm8916-mtp", "qcom,msm8916", "qcom,mtp";
+ * Berbasis msm8916-mtp mainline -- A37 memang turunan MTP.
  *
- * qcom,msm-id dan qcom,board-id WAJIB ada meski mainline tidak memakainya:
- * bootloader LK pada perangkat ini memilih DTB dengan mencocokkan keduanya.
- * Nilainya diambil dari arch/arm/boot/dts/qcom/msm8916-mtp-15399.dts dan
- * msm8916.dtsi milik pohon 3.10.
+ * Percobaan pertama (Image.gz) gagal: LK arm64 tidak mendekompresi.
+ * Percobaan kedua (Image mentah) juga gagal tanpa satupun jejak di ramoops.
+ * Dua kemungkinan sebabnya diperbaiki di sini:
+ *
+ * 1. msm8916.dtsi mainline memakai `memory { reg = <0 0 0 0> }` dengan
+ *    komentar "We expect the bootloader to fill in the reg". LK pada perangkat
+ *    ini kemungkinan tidak mengisinya untuk DTB non-CAF, sehingga kernel tidak
+ *    tahu ada RAM dan mati sebelum konsol hidup. Diisi eksplisit di sini.
+ *
+ * 2. Tidak ada reserved-memory untuk ramoops, sehingga area 0x9ff00000 yang
+ *    dipakai pstore tidak dilindungi. Ditambahkan dengan layout PERSIS sama
+ *    dengan cmdline ROM/TWRP supaya recovery bisa membacanya.
  */
 
 /dts-v1/;
@@ -23,4 +29,34 @@
 
 	qcom,msm-id = <206 0>, <248 0>, <249 0>, <250 0>;
 	qcom,board-id = <8 0 15399>;
+
+	/* A37 = 2 GB terpasang; MemTotal 3.10 terbaca 1.932.196 kB */
+	memory@80000000 {
+		device_type = "memory";
+		reg = <0x0 0x80000000 0x0 0x80000000>;
+	};
+
+	reserved-memory {
+		#address-cells = <2>;
+		#size-cells = <2>;
+		ranges;
+
+		/*
+		 * Layout identik dengan cmdline ROM 3.10 dan TWRP:
+		 *   mem_address=0x9ff00000  mem_size=0x400000
+		 *   record_size=0x40000  console_size=0x100000  pmsg_size=0x40000
+		 *   ecc=32
+		 * Harus sama persis, kalau tidak TWRP membaca buffer dengan tata
+		 * letak berbeda dan isinya tampak rusak.
+		 */
+		ramoops_mem: ramoops@9ff00000 {
+			compatible = "ramoops";
+			reg = <0x0 0x9ff00000 0x0 0x400000>;
+			record-size = <0x40000>;
+			console-size = <0x100000>;
+			pmsg-size = <0x40000>;
+			ecc-size = <32>;
+			no-map;
+		};
+	};
 };
