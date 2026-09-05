@@ -124,14 +124,41 @@ Masih nol jejak.
 Tidak adanya `dmesg-ramoops` sama sekali berarti **kernel berhenti sebelum
 pstore hidup** — sangat awal, sebelum menulis sebaris pun.
 
-### Tersangka yang tersisa, belum diuji
+### Ukuran DIUJI dan TERSINGKIR
 
-**Ukuran.** Kernel 3.10 yang bekerja 18.562.488 byte; kernel 4.19 ini
-33.464.832 byte, 80% lebih besar, dan `boot.img` menyisakan hanya 45 KB dari
-partisi. LK lama sering punya batas yang tidak terdokumentasi.
+Kernel 3.10 yang terbukti bekerja di-padding nol sampai 33.339.392 byte —
+99,6% dari ukuran kernel 4.19 — lalu dibungkus dengan ramdisk mini dan
+`dt.img` CAF asli, sehingga satu-satunya variabel yang berubah adalah ukuran.
 
-Menguji ini butuh kernel 4.19 yang jauh lebih kecil — dan §4 menjelaskan
-kenapa itu tidak tercapai.
+Hasilnya boot sempurna:
+
+```
+Linux version 3.10.108-lineageos-g756cb4623341-dirty
+Machine: Qualcomm Technologies, Inc. MSM 8916 MTP
+Memory: 1874536K/1990656K available (11570K kernel code, ...)
+[2.943203] Kernel panic - not syncing: VFS: Unable to mount root fs
+           on unknown-block(0,0)
+```
+
+Panic di detik 2,94 persis seperti yang diharapkan dari ramdisk mini, dan
+`dmesg-ramoops-0` muncul untuk pertama kalinya (209.672 byte).
+
+**LK memuat dan menjalankan kernel 33,3 MB tanpa keluhan.** Ukuran bukan
+penyebab, dan perang konfigurasi di §4 tidak diperlukan untuk kasus ini.
+
+Uji ini juga membuktikan metode ramoops bekerja: ketika kernel benar-benar
+jalan, lognya tercatat dan terbaca dari TWRP.
+
+### Tersangka yang tersisa
+
+**DTB.** Uji ukuran memakai `dt.img` CAF asli (210.944 byte, 4 DTB), sedangkan
+seluruh percobaan 4.19 memakai DTB mainline buatan sendiri (36.156 byte).
+Variabel ini belum pernah dipisahkan.
+
+**Kernel 4.19 itu sendiri.** Konfigurasi berbasis `msm8937-perf_defconfig`
+menyalakan driver CAF untuk msm8937/sdm429/sdm439 yang initcall-nya berjalan
+tanpa bergantung DT. Salah satu di antaranya bisa crash di msm8916 sebelum
+pstore hidup.
 
 ---
 
