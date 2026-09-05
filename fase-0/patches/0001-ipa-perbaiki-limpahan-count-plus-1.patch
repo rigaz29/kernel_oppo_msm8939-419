@@ -1,0 +1,102 @@
+diff --git a/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c b/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c
+index 11be67b8e..ed78114d6 100644
+--- a/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c
++++ b/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c
+@@ -193,7 +193,7 @@ static ssize_t ipa_write_ep_holb(struct file *file,
+ 	unsigned long missing;
+ 	char *sptr, *token;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -236,7 +236,7 @@ static ssize_t ipa_write_ep_reg(struct file *file, const char __user *buf,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -376,7 +376,7 @@ static ssize_t ipa_write_keep_awake(struct file *file, const char __user *buf,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -1444,7 +1444,7 @@ static ssize_t ipa_write_dbg_cnt(struct file *file, const char __user *buf,
+ 	unsigned long missing;
+ 	u32 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -1831,7 +1831,7 @@ static ssize_t ipa2_clear_active_clients_log(struct file *file,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, ubuf, count);
+@@ -1877,7 +1877,7 @@ static ssize_t ipa_write_rx_polling_timeout(struct file *file,
+ {
+ 	s8 polltime = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	if (copy_from_user(dbg_buff, ubuf, count))
+@@ -1918,7 +1918,7 @@ static ssize_t ipa_write_polling_iteration(struct file *file,
+ {
+ 	s8 iteration_cnt = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	if (copy_from_user(dbg_buff, ubuf, count))
+@@ -1944,7 +1944,7 @@ static ssize_t ipa_enable_ipc_low(struct file *file,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, ubuf, count);
+diff --git a/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c b/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c
+index 0313b19b4..ce10e5554 100644
+--- a/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c
++++ b/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c
+@@ -842,7 +842,7 @@ static ssize_t ipa_dma_debugfs_reset_statistics(struct file *file,
+ 	unsigned long missing;
+ 	s8 in_num = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, ubuf, count);
+diff --git a/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c b/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
+index 1b900a271..b48118ecb 100644
+--- a/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
++++ b/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
+@@ -2248,7 +2248,7 @@ static ssize_t ipa_debugfs_enable_disable_drop_stats(struct file *file,
+ 	ssize_t ret;
+ 
+ 	mutex_lock(&ipa3_ctx->lock);
+-	if (sizeof(dbg_buff) < count + 1) {
++	if (count >= sizeof(dbg_buff)) {
+ 		ret = -EFAULT;
+ 		goto bail;
+ 	}
