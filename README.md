@@ -59,7 +59,9 @@ perangkat nyata dengan userspace yang sama**.
 
 ```
 versi          : 3.10.108
-riwayat git    : 50 commit  <- impor vendor ter-squash, TIDAK ADA leluhur CAF
+riwayat git    : 445.894 commit, tertua Linux-2.6.12-rc2 (2005)
+                 leluhur mainline ADA (commit "Linux 3.10.108")
+                 270 merge CAF, termasuk LA.BR.1.2.9.1-02310-8x16.0
 remote         : gh  = rigaz29/kernel_oppo_msm8939
 DTS perangkat  : arch/arm/boot/dts/qcom/msm8916-mtp-15399.dts (852 byte)
                  board-id <8 0 15399>, dibangun lewat CONFIG_MACH_15399
@@ -68,8 +70,15 @@ defconfig      : lineageos_a37f_defconfig, 601 opsi `=y`, 0 modul
 SoC            : MSM8916, Cortex-A53 4x1,2 GHz, Adreno 306, RAM 2 GB
 ```
 
-Riwayat 50 commit itu penting: tidak ada leluhur CAF berarti tidak ada yang
-bisa di-`rebase`. Ini pemindahan kode per-subsistem dengan tangan.
+**Koreksi 5 September 2026.** Versi sebelumnya dokumen ini menulis "50 commit,
+impor vendor ter-squash, TIDAK ADA leluhur CAF" dan menyimpulkan tidak ada yang
+bisa di-`rebase`. **Itu salah.** Penyebabnya `git log` dijalankan lewat pembungkus
+yang memfilter keluaran, lalu barisnya dihitung dengan `wc -l`; angka yang benar
+diperoleh dengan `git rev-list --count`.
+
+Konsekuensinya besar: pohon ini punya riwayat penuh mainline dan CAF, sehingga
+**merge incremental per rilis mayor benar-benar mungkin** — pendekatan yang
+dipakai pengembang kernel profesional dan yang keunggulannya dibahas di §8.4.
 
 ### Volume kode di pohon lama (batas atas)
 
@@ -460,6 +469,63 @@ perangkat ini CPU dan RAM — terukur: keempat inti mentok 1.209.600 kHz dengan
 4.19 tidak mengubah keduanya.
 
 ---
+
+### 8.4 Merge incremental per rilis mayor — jalur yang sebelumnya dikira mustahil
+
+Metodologi standar industri: alih-alih mengambil pohon 4.19 yang sudah jadi
+lalu menambahkan dukungan msm8916 ke dalamnya (pendekatan Fase 0-1), pohon A37
+sendiri dimajukan bertahap lewat `git merge` upstream:
+
+```
+3.10.108 -> 3.14 -> 3.18 -> 4.4 -> 4.9 -> 4.14 -> 4.19
+```
+
+Dokumen ini sebelumnya menyatakan jalur ini tertutup karena pohon dikira hanya
+punya 50 commit tanpa leluhur. Setelah dikoreksi (§2), prasyaratnya ternyata
+terpenuhi: 445.894 commit, leluhur mainline sampai 2.6.12, dan 270 merge CAF.
+
+**Keunggulan yang menjawab kegagalan Fase 1.** Pendekatan sekali-lompat
+menempatkan kita di posisi terburuk: kernel tidak boot dan tidak ada cara tahu
+kenapa (fase-1 §3). Dengan merge incremental, posisi itu tidak akan terjadi —
+setiap langkah diuji boot, sehingga begitu ada yang rusak, langkah perusaknya
+langsung teridentifikasi. Itu keunggulan struktural, bukan sekadar kerapian.
+
+**Yang tidak dihilangkannya:**
+
+- Blob kamera tetap risiko terbesar (§4.2). Wrapper/shim adalah jawaban yang
+  benar tetapi tetap pekerjaan besar.
+- Konsol tetap prasyarat. Bahkan dengan incremental, satu langkah yang membuat
+  bootloop tetap menuntut melihat sebabnya. `lk2nd` tetap langkah pertama.
+- `CONFIG_PSTORE`/`PSTORE_RAM` saja **tidak cukup** — ramoops baru hidup di
+  `postcore_initcall`, dan kernel yang mati sebelum itu tidak meninggalkan
+  jejak. Fase 1 membuktikannya lima kali, sekaligus membuktikan metodenya
+  sendiri berfungsi ketika kernel benar-benar jalan.
+
+**Biaya terukur, bukan perkiraan.** Satu loncatan terkecil diukur langsung
+pada 5 September 2026 dengan `git merge v3.11` di branch percobaan:
+
+```
+merge-base   : commit "Linux 3.10" (pohon A37 bercabang tepat di sana)
+berkas konflik : 676
+  dokumentasi  :  12
+  arsitektur lain (x86/powerpc/mips/...) : 0
+  benar-benar relevan (arm, drivers, fs, kernel, mm, include) : 619
+  menyentuh kode MSM/QCOM : 40
+```
+
+Nol konflik di arsitektur lain berarti hampir semuanya relevan — tidak bisa
+diabaikan begitu saja.
+
+676 konflik itu untuk **satu** loncatan minor (3.10 → 3.11). Jalur ke 4.19
+melewati kira-kira 3.11, 3.12, 3.13, 3.14, 3.16, 3.18, 4.1, 4.4, 4.9, 4.14,
+4.19 — sebelas loncatan. Bila 3.11 mewakili, ordenya beberapa ribu konflik
+total, dan yang menyentuh kode MSM (bagian tersulit karena tidak ada rujukan
+upstream) sekitar 40 per loncatan.
+
+Sebagai kalibrasi: pekerjaan Fase 0-1 seluruhnya menghasilkan **nol** konflik
+merge, karena pendekatannya menambahkan berkas ke pohon yang sudah 4.19.
+Pertukarannya jelas — incremental jauh lebih mahal di muka, tetapi setiap
+langkah bisa diuji boot, dan itu yang menyelamatkan dari kebuntuan Fase 1.
 
 ## 9. Gerbang keputusan
 
