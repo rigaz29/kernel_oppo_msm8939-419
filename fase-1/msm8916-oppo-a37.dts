@@ -1,0 +1,26 @@
+// SPDX-License-Identifier: GPL-2.0-only
+/*
+ * OPPO A37 / A37f (msm8916, board-id 15399)
+ *
+ * Fase 1 forward-port: cukup untuk boot sampai konsol.
+ * Berbasis msm8916-mtp mainline -- A37 memang turunan MTP, terlihat dari
+ * compatible di DTS CAF 3.10 aslinya:
+ *   compatible = "qcom,msm8916-mtp", "qcom,msm8916", "qcom,mtp";
+ *
+ * qcom,msm-id dan qcom,board-id WAJIB ada meski mainline tidak memakainya:
+ * bootloader LK pada perangkat ini memilih DTB dengan mencocokkan keduanya.
+ * Nilainya diambil dari arch/arm/boot/dts/qcom/msm8916-mtp-15399.dts dan
+ * msm8916.dtsi milik pohon 3.10.
+ */
+
+/dts-v1/;
+
+#include "msm8916-mtp.dtsi"
+
+/ {
+	model = "OPPO A37";
+	compatible = "qcom,msm8916-mtp", "qcom,msm8916", "qcom,mtp";
+
+	qcom,msm-id = <206 0>, <248 0>, <249 0>, <250 0>;
+	qcom,board-id = <8 0 15399>;
+};

@@ -1,0 +1,163 @@
+From 8be572326d29361e7ae99b56bd8b3500d4dff24a Mon Sep 17 00:00:00 2001
+From: rigaz29 <ryanbagas27@gmail.com>
+Date: Sat, 5 Sep 2026 02:33:01 +0000
+Subject: [PATCH] a37: DTS pertama + perbaikan IPA
+
+---
+ arch/arm64/boot/dts/qcom/Makefile             |  1 +
+ arch/arm64/boot/dts/qcom/msm8916-oppo-a37.dts | 26 +++++++++++++++++++
+ drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c | 16 ++++++------
+ drivers/platform/msm/ipa/ipa_v2/ipa_dma.c     |  2 +-
+ .../platform/msm/ipa/ipa_v3/ipa_hw_stats.c    |  2 +-
+ 5 files changed, 37 insertions(+), 10 deletions(-)
+ create mode 100644 arch/arm64/boot/dts/qcom/msm8916-oppo-a37.dts
+
+diff --git a/arch/arm64/boot/dts/qcom/Makefile b/arch/arm64/boot/dts/qcom/Makefile
+index 48c84598f..2db664a73 100644
+--- a/arch/arm64/boot/dts/qcom/Makefile
++++ b/arch/arm64/boot/dts/qcom/Makefile
+@@ -3,6 +3,7 @@ dtb-$(CONFIG_ARCH_QCOM)	+= apq8016-sbc.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= apq8096-db820c.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= ipq8074-hk01.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-mtp.dtb
++dtb-$(CONFIG_ARCH_QCOM)	+= msm8916-oppo-a37.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= msm8992-bullhead-rev-101.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= msm8994-angler-rev-101.dtb
+ dtb-$(CONFIG_ARCH_QCOM)	+= msm8996-mtp.dtb
+diff --git a/arch/arm64/boot/dts/qcom/msm8916-oppo-a37.dts b/arch/arm64/boot/dts/qcom/msm8916-oppo-a37.dts
+new file mode 100644
+index 000000000..a63dcc1a5
+--- /dev/null
++++ b/arch/arm64/boot/dts/qcom/msm8916-oppo-a37.dts
+@@ -0,0 +1,26 @@
++// SPDX-License-Identifier: GPL-2.0-only
++/*
++ * OPPO A37 / A37f (msm8916, board-id 15399)
++ *
++ * Fase 1 forward-port: cukup untuk boot sampai konsol.
++ * Berbasis msm8916-mtp mainline -- A37 memang turunan MTP, terlihat dari
++ * compatible di DTS CAF 3.10 aslinya:
++ *   compatible = "qcom,msm8916-mtp", "qcom,msm8916", "qcom,mtp";
++ *
++ * qcom,msm-id dan qcom,board-id WAJIB ada meski mainline tidak memakainya:
++ * bootloader LK pada perangkat ini memilih DTB dengan mencocokkan keduanya.
++ * Nilainya diambil dari arch/arm/boot/dts/qcom/msm8916-mtp-15399.dts dan
++ * msm8916.dtsi milik pohon 3.10.
++ */
++
++/dts-v1/;
++
++#include "msm8916-mtp.dtsi"
++
++/ {
++	model = "OPPO A37";
++	compatible = "qcom,msm8916-mtp", "qcom,msm8916", "qcom,mtp";
++
++	qcom,msm-id = <206 0>, <248 0>, <249 0>, <250 0>;
++	qcom,board-id = <8 0 15399>;
++};
+diff --git a/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c b/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c
+index 11be67b8e..ed78114d6 100644
+--- a/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c
++++ b/drivers/platform/msm/ipa/ipa_v2/ipa_debugfs.c
+@@ -193,7 +193,7 @@ static ssize_t ipa_write_ep_holb(struct file *file,
+ 	unsigned long missing;
+ 	char *sptr, *token;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -236,7 +236,7 @@ static ssize_t ipa_write_ep_reg(struct file *file, const char __user *buf,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -376,7 +376,7 @@ static ssize_t ipa_write_keep_awake(struct file *file, const char __user *buf,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -1444,7 +1444,7 @@ static ssize_t ipa_write_dbg_cnt(struct file *file, const char __user *buf,
+ 	unsigned long missing;
+ 	u32 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, buf, count);
+@@ -1831,7 +1831,7 @@ static ssize_t ipa2_clear_active_clients_log(struct file *file,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, ubuf, count);
+@@ -1877,7 +1877,7 @@ static ssize_t ipa_write_rx_polling_timeout(struct file *file,
+ {
+ 	s8 polltime = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	if (copy_from_user(dbg_buff, ubuf, count))
+@@ -1918,7 +1918,7 @@ static ssize_t ipa_write_polling_iteration(struct file *file,
+ {
+ 	s8 iteration_cnt = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	if (copy_from_user(dbg_buff, ubuf, count))
+@@ -1944,7 +1944,7 @@ static ssize_t ipa_enable_ipc_low(struct file *file,
+ 	unsigned long missing;
+ 	s8 option = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, ubuf, count);
+diff --git a/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c b/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c
+index 0313b19b4..ce10e5554 100644
+--- a/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c
++++ b/drivers/platform/msm/ipa/ipa_v2/ipa_dma.c
+@@ -842,7 +842,7 @@ static ssize_t ipa_dma_debugfs_reset_statistics(struct file *file,
+ 	unsigned long missing;
+ 	s8 in_num = 0;
+ 
+-	if (sizeof(dbg_buff) < count + 1)
++	if (count >= sizeof(dbg_buff))
+ 		return -EFAULT;
+ 
+ 	missing = copy_from_user(dbg_buff, ubuf, count);
+diff --git a/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c b/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
+index 1b900a271..b48118ecb 100644
+--- a/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
++++ b/drivers/platform/msm/ipa/ipa_v3/ipa_hw_stats.c
+@@ -2248,7 +2248,7 @@ static ssize_t ipa_debugfs_enable_disable_drop_stats(struct file *file,
+ 	ssize_t ret;
+ 
+ 	mutex_lock(&ipa3_ctx->lock);
+-	if (sizeof(dbg_buff) < count + 1) {
++	if (count >= sizeof(dbg_buff)) {
+ 		ret = -EFAULT;
+ 		goto bail;
+ 	}
+-- 
+2.43.0
+
