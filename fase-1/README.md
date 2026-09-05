@@ -2,9 +2,14 @@
 
 Dikerjakan 5 September 2026.
 
-**Status: BELUM LULUS.** Kernel terbangun dan ter-flash, tetapi tidak pernah
-menulis sebaris pun ke konsol. Tiga percobaan di perangkat, sepuluh percobaan
-build.
+**Status: BELUM LULUS, penyelidikan buntu tanpa konsol serial.** Kernel
+terbangun dan ter-flash, tetapi tidak pernah menulis sebaris pun. Lima
+percobaan di perangkat, dua belas percobaan build.
+
+Tujuh tersangka disingkirkan dengan bukti eksperimental (§3). Yang tersisa
+menuntut melihat apa yang terjadi sebelum pstore hidup, dan A37 tidak
+menyediakan jalan ke sana — karena itu rekomendasinya adalah mendapatkan
+konsol lebih dulu lewat `lk2nd` (§7), bukan melanjutkan tebakan konfigurasi.
 
 Dokumen ini mencatat apa yang berhasil, apa yang tersingkir sebagai penyebab,
 dan satu temuan struktural yang mengubah penilaian biaya seluruh proyek.
@@ -149,16 +154,53 @@ penyebab, dan perang konfigurasi di §4 tidak diperlukan untuk kasus ini.
 Uji ini juga membuktikan metode ramoops bekerja: ketika kernel benar-benar
 jalan, lognya tercatat dan terbaca dari TWRP.
 
-### Tersangka yang tersisa
+### DTB diuji dan tersingkir
 
-**DTB.** Uji ukuran memakai `dt.img` CAF asli (210.944 byte, 4 DTB), sedangkan
-seluruh percobaan 4.19 memakai DTB mainline buatan sendiri (36.156 byte).
-Variabel ini belum pernah dipisahkan.
+Kernel 4.19 dipasangkan dengan `dt.img` CAF asli — device tree yang sama persis
+yang baru saja membuktikan kernel 3.10 bisa boot di ukuran 33 MB — dan cmdline
+ROM 3.10 apa adanya. Tetap nol jejak.
 
-**Kernel 4.19 itu sendiri.** Konfigurasi berbasis `msm8937-perf_defconfig`
-menyalakan driver CAF untuk msm8937/sdm429/sdm439 yang initcall-nya berjalan
-tanpa bergantung DT. Salah satu di antaranya bisa crash di msm8916 sebelum
-pstore hidup.
+### KASLR, KPTI, dan header EFI diuji dan tersingkir
+
+Perbedaan arsitektural yang tersisa antara kernel 4.19 dan kernel 3.10 yang
+bekerja dimatikan sekaligus:
+
+```
+RANDOMIZE_BASE, RELOCATABLE       KASLR: kernel merelokasi diri saat boot,
+                                  butuh kaslr-seed yang LK 2015 tidak sediakan
+UNMAP_KERNEL_AT_EL0               KPTI, tidak dibutuhkan Cortex-A53
+ARM64_UAO, ARM64_PAN, SW_TTBR0_PAN  fitur ARMv8.1
+EFI, EFI_STUB                     agar code0 jadi branch murni
+```
+
+Hasilnya `code0` berubah dari `0x91005a4d` (MZ/EFI) menjadi `0x145e0000`
+(instruksi branch), sejenis dengan kernel 3.10 yang bekerja (`0x14000010`).
+`-Os` juga dipakai, menurunkan `Image` menjadi 29.261.832 byte dengan sisa
+partisi 4,2 MB — tidak lagi mepet.
+
+Terpasang dan terverifikasi di perangkat (byte pertama kernel di partisi boot
+`00 00 5e 14`). **Tetap nol jejak.**
+
+### Kesimpulan penyelidikan
+
+Kernel 4.19 mati sebelum pstore hidup, konsisten di seluruh konfigurasi.
+Tersangka yang tersingkir dengan bukti eksperimental:
+
+| Tersangka | Cara diuji | Hasil |
+|---|---|---|
+| Format gzip | ganti ke `Image` mentah | tetap gagal |
+| Ukuran kernel | kernel 3.10 di-padding 33,3 MB | **boot sempurna** |
+| DTB buatan sendiri | pakai `dt.img` CAF asli | tetap nol |
+| KASLR / relokasi | `RANDOMIZE_BASE` mati | tetap nol |
+| KPTI / ARMv8.1 | `UNMAP_KERNEL_AT_EL0` dll mati | tetap nol |
+| Header MZ/EFI | `code0` jadi branch murni | tetap nol |
+| Toolchain | nol instruksi ARMv8.2+ | bukan penyebab |
+
+**Batas metode.** Tanpa konsol serial fisik, tidak ada cara mempersempit lebih
+jauh: setiap tersangka berikutnya butuh melihat apa yang terjadi *sebelum*
+pstore hidup, dan A37 tidak menyediakan jalan ke sana.
+
+Lima percobaan flash, dua belas percobaan build.
 
 ---
 
@@ -237,21 +279,35 @@ boot-a37-419-fase1c.img  sha256 2c49f57ec3a8d63373b69626dd417b172152e1dbf822ece7
 
 ## 7. Langkah berikutnya bila dilanjutkan
 
-Berurutan menurut nilai per usaha:
+**Rekomendasi: mulai dari `lk2nd`, bukan dari menebak konfigurasi kernel.**
 
-1. **Uji hipotesis ukuran tanpa membangun kernel kecil.** Ambil kernel 3.10
-   yang bekerja, bungkus dalam `boot.img` dengan padding sampai ~33 MB, dan
-   lihat apakah masih boot. Kalau tidak, ukuran terbukti jadi penyebab tanpa
-   perlu memenangkan perang konfigurasi.
+Proyek `msm8916-mainline` membuat `lk2nd` persis untuk situasi ini: bootloader
+kedua yang dimuat oleh LK stock, lalu menyediakan penanganan DTB modern **dan
+konsol via USB**. Konsol itu yang selama ini kita kekurangan, dan tanpanya
+penyelidikan ini buntu.
 
-2. **Cari LK OPPO A37 atau sumber `lk` msm8916** untuk membaca batas ukuran
-   kernel dan cara ia menghitung alamat muat.
+Mereka sudah memecahkan masalah yang sama untuk puluhan perangkat msm8916,
+termasuk perangkat dengan LK sekelas A37.
 
-3. **Pertimbangkan pohon lain.** `msm8916-mainline` menjalankan msm8916 di
-   kernel 6.x tanpa beban CAF, dan konfigurasinya bisa diatur bebas. Itu
-   menghindari §4 sepenuhnya, dengan konsekuensi yang sudah dicatat di rencana
-   induk §8.2 — tumpukan HAL Android CAF tidak dipakai.
+Urutan yang masuk akal bila dilanjutkan:
 
-4. Ramdisk kosong 129 byte terbukti cukup dan benar untuk uji ini: kernel
-   diharapkan panic `no init found` setelah konsol hidup, dan itu justru bukti
-   yang dicari.
+1. **`lk2nd`** — dapatkan konsol lebih dulu. Semua penyelidikan berikutnya
+   menjadi murah begitu kernel bisa bicara.
+2. Dengan konsol tersedia, ulangi kernel 4.19 ini apa adanya; penyebab
+   kematiannya akan langsung terlihat.
+3. Baru pertimbangkan apakah tetap di 4.19 CAF (dengan beban §4) atau pindah
+   ke mainline 6.x yang dipakai `msm8916-mainline` — konsekuensinya dicatat di
+   rencana induk §8.2, tumpukan HAL Android CAF tidak dipakai.
+
+### Yang terbukti berguna dan layak dipertahankan
+
+- **Ramdisk kosong 129 byte** — kernel diharapkan panic `no init found` setelah
+  konsol hidup, dan itu justru bukti yang dicari. Terbukti bekerja pada uji
+  padding.
+- **Uji padding sebagai kontrol.** Membungkus kernel yang *terbukti bekerja*
+  agar menyerupai kandidat yang gagal adalah cara termurah menyingkirkan
+  variabel. Satu flash menggugurkan hipotesis yang sudah menelan sepuluh build.
+- **`ramoops.ecc` harus sama** dengan ROM/TWRP (32). Nilai berbeda membuat
+  buffer terbaca sebagai sampah.
+- **Jangan biarkan TWRP menyala lama** sebelum menarik log — TWRP menulis ke
+  buffer ramoops yang sama dan menimpa jejak kernel sebelumnya.
